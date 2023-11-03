@@ -97,7 +97,9 @@ exports.loginUser = async (req, res, next) => {
         "data": user,
         "msg": "Usuario logueado",
         "token": createToken(user)
+
     })
+    console.log(user)
 }
 
 // Actualizar usuario
@@ -157,3 +159,27 @@ exports.deleteUser = async (req, res, next) => {
         next(error);
     }
 }
+
+
+exports.registervalidation = async (req, res, next) => {
+    try {
+      const emailToCheck = req.body.email; // Supongamos que el correo a verificar llega en el cuerpo de la solicitud.
+  
+      const user = await userSchema.findOne({ email: emailToCheck });
+  
+        if (user) {
+            // El correo electrónico ya está registrado
+            res.status(200).json({ message: 'El correo electrónico ya está registrado' });
+        } else {
+            // El correo electrónico no está registrado
+            res.status(200).json({ message: 'El correo electrónico no está registrado' });
+        }
+    } catch (error) {
+      console.error(error.message);
+      res.status(500).json({ error: 'Error en el servidor' });
+    }
+  }
+ 
+  
+  
+  
