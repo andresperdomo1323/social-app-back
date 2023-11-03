@@ -3,6 +3,8 @@ const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
 const userSchema = require('../models/user')
 const jwt = require('jsonwebtoken')
+const passport = require('passport')
+const { OAuth2Client } = require('google-auth-library');
 
 
 // Todos los usuarios
@@ -18,8 +20,9 @@ exports.getUsers = async (req, res, next) => {
 // Un usuario
 exports.getUser = async (req, res, next) => {
     try {
-        const id = req.params.id;
-        const user = await userSchema.findById({_id: id});
+        const userId = req.params.id;
+        console.log(userId);
+        const user = await userSchema.findById(userId);
         if(!user){
             res.status(200).json({
                 "success": true,
@@ -32,6 +35,7 @@ exports.getUser = async (req, res, next) => {
                 "msg": "Usuario encontrado"
             })
         }
+
     } catch (error) {
         console.log(error.message);
         if( error instanceof mongoose.CastError){
@@ -44,24 +48,64 @@ exports.getUser = async (req, res, next) => {
 
 // Crear usuario
 exports.createUser = async (req, res, next) => {
-    console.log(req.body);
     try {
+        const validationErrors = validateUser(req.body);
+
+        if (validationErrors.length > 0) {
+            return res.status(400).json({
+                success: false,
+                msg: validationErrors,
+            });
+        }
+
         req.body.password = bcrypt.hashSync(req.body.password, 10);
         const user = await userSchema.create(req.body);
+        console.log("Usuario creado correctamente:", user);
         res.status(201).json({
-            "success": true,
-            "data": user,
-            "msg": "Usuario creado",
-        })
-
+            success: true,
+            data: user,
+            msg: "Usuario creado",
+        });
     } catch (error) {
-        res.json({
-            "success": false,
-            "msg": "No se pudo crear el usuario",
-            "error": error.message
-        })
+        handleCreateUserError(error, res);
     }
+};
+
+function validateUser(userData) {
+    const requiredFields = ["username", "email", "password"];
+    const missingFields = requiredFields.filter(field => !userData[field]);
+    const errorMessages = [];
+
+    if (missingFields.length > 0) {
+        errorMessages.push(`Los campos requeridos ${missingFields.join(", ")} no pueden estar vacíos.`);
+    }
+
+    if (userData.password.length < 10) {
+        errorMessages.push("La contraseña debe tener al menos 10 caracteres.");
+    }
+
+    return errorMessages;
 }
+
+function handleCreateUserError(error, res) {
+    const errorMessages = [];
+
+    if (error.code === 11000) {
+        errorMessages.push("El correo electrónico ya está registrado");
+    } else if (error.errors && error.errors.password) {
+        errorMessages.push("La contraseña debe tener al menos 10 caracteres");
+    } else {
+        errorMessages.push("No se pudo crear el usuario");
+    }
+
+    console.log("Error desconocido:", error);
+    res.status(500).json({
+        success: false,
+        msg: errorMessages,
+        error: error.message,
+    });
+}
+
 
 // Crear token
 function createToken(user){
@@ -73,6 +117,7 @@ function createToken(user){
     return jwt.sign(payload, 'secretKey' , {expiresIn: '1h'})
 }
 
+
 // Login usuario
 exports.loginUser = async (req, res, next) => {
     // comprobar si el usuario existe
@@ -80,13 +125,13 @@ exports.loginUser = async (req, res, next) => {
         email: req.body.email
     })
     if(!user){
-        res.status(400).json({
+        res.status(404).json({
             "success": false,
             "msg": "Usuario no encontrado",
         })
     }
     // comprobar si la contraseña es correcta
-    const validPassword = bcrypt.compareSync(req.body.password, user.password);
+    const validPassword = bcrypt.compare(req.body.password, user.password);
     if(!validPassword){
         res.status(400).json({
             "success": false,
@@ -105,7 +150,7 @@ exports.loginUser = async (req, res, next) => {
 // Actualizar usuario
 exports.updateUser = async (req, res, next) => {
     try {
-        const id = req.params.id;
+        const { id } = req.params;
         const update = req.body;
         const options = {new: true};
 

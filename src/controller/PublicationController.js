@@ -45,6 +45,7 @@ exports.getPublication = async (req, res, next) => {
 
 // Crear publicacion
 exports.createPublication = async (req, res, next) => {
+    console.log(req.body);
     try{
         const publication = await publicationSchema.create(req.body);
         res.status(201).json({

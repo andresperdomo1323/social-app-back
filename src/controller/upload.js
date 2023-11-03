@@ -15,7 +15,22 @@ const getItems = async (req, res) => {
  * @param {object} req
  * @param {object} res
  */
-const getItem = (req, res) => {};
+const getItem = async (req, res) => {
+    try {
+        const itemId = req.params.id;
+
+        const item = await uploadModel.findById(itemId);
+
+        if (!item) {
+            return res.status(404).json({ error: "Elemento no encontrado" });
+        }
+
+        res.json({ data: item });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error al obtener el elemento" });
+    }
+};
 
 /**
  * Crea un nuevo elemento.
@@ -23,14 +38,20 @@ const getItem = (req, res) => {};
  * @param {object} res
  */
 const createItem = async (req, res) => {
-    const { body, file } = req
+    const { file } = req
     console.log(file);
-    const fileData = {
-        filename: file.filename,
-        url: `${PUBLIC_URL}/${file.filename}`
+  
+    if (!file) {
+        return res.status(400).json({ error: "No se proporcionó un archivo válido" });
     }
+
+    const fileData = {
+        filename: file.key,
+        url: `${PUBLIC_URL}/${file.key}`
+    }
+
     const data = await uploadModel.create(fileData);
-    res.send({data});
+    res.send({ data });
 };
 
 /**
@@ -38,13 +59,44 @@ const createItem = async (req, res) => {
  * @param {object} req
  * @param {object} res
  */
-const updateItem = (req, res) => {};
+const updateItem = async (req, res) => {
+    try {
+        const itemId = req.params.id;
+        const updateData = req.body;
+
+        const item = await uploadModel.findByIdAndUpdate(itemId, updateData, { new: true });
+
+        if (!item) {
+            return res.status(404).json({ error: "Elemento no encontrado" });
+        }
+
+        res.json({ data: item });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error al actualizar el elemento" });
+    }
+};
 
 /**
  * Elimina elementos.
  * @param {object} req
  * @param {object} res
  */
-const deleteItems = (req, res) => {};
+const deleteItem = async (req, res) => {
+    try {
+        const itemId = req.params.id;
+        const result = await uploadModel.findByIdAndDelete(itemId);
 
-module.exports = { getItems, getItem, createItem, updateItem, deleteItems };
+        if (!result) {
+            return res.status(404).json({ error: "Elemento no encontrado" });
+        }
+
+        res.json({ message: "Elemento eliminado con éxito" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error al eliminar el elemento" });
+    }
+};
+
+
+module.exports = { getItems, getItem, createItem, updateItem, deleteItem };

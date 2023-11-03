@@ -1,16 +1,29 @@
+require('dotenv').config();
+const { S3 } = require("@aws-sdk/client-s3");
 const multer = require('multer');
-const upload = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const pathUpload = `${__dirname}/../upload`;
-        cb(null, pathUpload)
-    },
-    filename: function (req, file, cb ) {
-        const ext = file.originalname.split('.').pop();
-        const filename = `file-${Date.now()}.${ext}`;
-        cb(null, filename)
-    },
+const multerS3 = require('multer-s3');
+
+const client = new S3({
+  region: process.env.AWS_BUCKET_REGION,
+  credentials: {
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+    accessKeyId: process.env.AWS_PUBLIC_KEY,
+  },
 });
 
-const uploadMiddleware = multer({ storage: upload });
+const upload = multer({
+  storage: multerS3({
+    s3: client,
+    bucket: process.env.AWS_BUCKET_NAME,
+    metadata: function (req, file, cb) {
+      cb(null, { fieldName: file.fieldname });
+    },
+    key: function (req, file, cb) {
+      const ext = file.originalname.split('.').pop();
+      const filename = `file-${Date.now()}.${ext}`;
+      cb(null, filename);
+    },
+  }),
+});
 
-module.exports = uploadMiddleware;
+module.exports = upload;

@@ -3,20 +3,21 @@ const publicationSchema = new mongoose.Schema({
     id_user: {
         type: mongoose.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: false
     },
     description: {
         type: String,
-        required: true
+        required: false
+        
     },
     typePublication: {
         type: String,
-        required: true,
+        
         default:['imagen', 'video', 'texto']
     },
     content: {
         type: String,
-        required: true
+        
     },
     id_event: {
         type: mongoose.Types.ObjectId,
